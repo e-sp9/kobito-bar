@@ -1,4 +1,6 @@
 pub mod battery;
+pub mod keymap;
+pub mod studio;
 pub mod tray;
 
 #[tauri::command]
@@ -12,12 +14,21 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
-        .invoke_handler(tauri::generate_handler![get_battery_status])
+        .invoke_handler(tauri::generate_handler![
+            get_battery_status,
+            keymap::get_keymap_images,
+            keymap::show_keymap_window,
+            studio::get_live_keymap
+        ])
         .setup(|app| {
             // Dock(macOS)に出さないトレイ常駐アプリにする
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            {
+                use tauri::Manager;
+                app.manage(keymap::KeymapState::default());
+            }
             tray::setup(app.handle())?;
             // トレイメニュー項目(TrayHandles)を manage した後に起動する
             battery::spawn(app.handle());

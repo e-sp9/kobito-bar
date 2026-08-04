@@ -93,10 +93,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         // 左クリックはポップアップのトグルに使う(メニューは右クリック)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
-            "keymap" => {
-                // キーマップ画面(マイルストーン4)まではポップアップを表示しておく
-                show_popup(app);
-            }
+            "keymap" => crate::keymap::show(app),
             "autostart" => {
                 let autolaunch = app.autolaunch();
                 let result = if autolaunch.is_enabled().unwrap_or(false) {

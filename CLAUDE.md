@@ -41,9 +41,11 @@ ZMK ファームウェアの左右分割キーボード(4 行 × 10 列、PMW361
 - 左手側が central(`CONFIG_ZMK_SPLIT_ROLE_CENTRAL=y`)。**PC と BLE 接続するのは左手側のみ**。右手側は左手側とだけ通信する
 - `CONFIG_ZMK_BATTERY_REPORTING=y`(左右とも)
 - `CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING=y` + `CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_PROXY=y`(左)
-- 無操作 30 分でディープスリープ(`CONFIG_ZMK_SLEEP=y`, `CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=1800000`)。復帰はキー押下のみ(トラックボールでは復帰しない)
+- 無操作 1 時間でディープスリープ(`CONFIG_ZMK_SLEEP=y`, `CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=3600000`。以前は 30 分だった)。復帰はキー押下のみ(トラックボールでは復帰しない)
 
-> **注意(引き継ぎメモからの訂正)**: ZMK Studio(`CONFIG_ZMK_STUDIO`)は現在のファームでは**無効**。KobitoKey_QWERTY の commit `22ec120` "Optimize firmware: ... drop Studio" で削除済み。v2 のキーマップ動的取得をやる際はファーム側での再有効化が必要。
+> **注意**: ZMK Studio(`CONFIG_ZMK_STUDIO`)は現在のファームでは**無効**(KobitoKey_QWERTY の commit `22ec120` "Optimize firmware: ... drop Studio" で削除済み)。v2 のライブキーマップを動かすには **KobitoKey_left.conf(左手側のみ)に 2 行追記**してファームを書き込む:
+> `CONFIG_ZMK_STUDIO=y` と `CONFIG_ZMK_STUDIO_LOCKING=n`。
+> BLE transport(`ZMK_STUDIO_TRANSPORT_BLE`)は default y なので指定不要。Studio の GATT characteristic は READ/WRITE_ENCRYPT でボンド済みデバイスしかアクセスできないため、LOCKING=n でもペアリング済み PC 以外からは読めない。LOCKING を有効のまま残す場合はキーマップに `&studio_unlock` キーが必要で、KobitoBar は locked を検出すると案内を出して画像表示にフォールバックする。
 
 ### 電池残量の読み方(BLE)
 
@@ -66,12 +68,12 @@ ZMK ファームウェアの左右分割キーボード(4 行 × 10 列、PMW361
 
 **v1 は静的表示**: 上記画像を利用する。取得方式は GitHub raw から取得+ローカルキャッシュを推奨(キーマップ更新に追従できる)。オフライン時はキャッシュ/同梱画像にフォールバック。
 
-**v2(将来)**: ZMK Studio RPC プロトコル(protobuf over USB/BLE。zmkfirmware/zmk-studio-messages で定義が公開されている)で実キーマップを動的取得。※上記の通りファーム側の Studio 再有効化が前提。
+**v2(アプリ側実装済み 2026-08-04)**: ZMK Studio RPC(protobuf over BLE GATT)で実機からキーマップ・物理レイアウト・behavior メタデータを動的取得し、SVG でキーマップを描画する。取得できないとき(未接続 / ファーム未対応 / ロック中)は理由を表示して v1 の画像へ自動フォールバック。※実機 E2E は上記のファーム側 Studio 有効化が前提。
 
 ## 実装上の注意点(調査済み)
 
 1. **接続済みデバイスの検出が肝**: キーボードは OS が既に HID として接続しており advertise していないため、BLE スキャンには出てこない。bluest の `connected_devices_with_services()` がこれを解決する(macOS は CoreBluetooth の接続済みペリフェラル取得、Windows はペアリング済みデバイス列挙)。このため btleplug ではなく bluest を採用した。スキャンは一切行わず、接続済み一覧を 5 秒間隔でポーリングして検出する(スキャンは Windows でシステム全体を重くする — zmk-battery-center の知見)。
-2. **再接続ハンドリング**: KobitoKey は無操作 30 分でディープスリープする。切断 → 復帰時に自動で再接続し、GATT notify を再購読するループを最初から設計に入れる。
+2. **再接続ハンドリング**: KobitoKey は無操作 1 時間でディープスリープする。切断 → 復帰時に自動で再接続し、GATT notify を再購読するループを最初から設計に入れる。
 3. **macOS 権限・配布**: `NSBluetoothAlwaysUsageDescription` が必要(`src-tauri/Info.plist` に記載済み)。未署名アプリは Gatekeeper に弾かれるため、配布時は Developer ID 署名+公証、または README に回避手順(quarantine 解除)を記載する。
 4. **Windows**: ペアリング済みデバイスへのアクセスに特別な権限は不要。未署名だと SmartScreen 警告が出る程度。
 5. **トレイアイコンの動的描画**: フレーム画像を複数用意し `set_icon` で差し替える方式(RunCat と同じ)。macOS ではテンプレートアイコン(モノクロ)推奨。
@@ -81,7 +83,8 @@ ZMK ファームウェアの左右分割キーボード(4 行 × 10 列、PMW361
 1. ✅ Tauri v2 雛形(トレイ常駐、自動起動設定)
 2. ✅ BLE 層: KobitoKey 検出 → Battery Service の 2 characteristic 読み取り+notify 購読 → CUD で左右識別 → 切断・再接続処理(**Windows 実機で検証済み 2026-08-04**: 検出・接続・CUD 左右識別・read 初期値(左 90%/右 91%)・notify 受信まで確認。notify は ZMK 仕様で残量が変化したときのみ届く。**未検証**: 切断→再接続(ディープスリープ復帰)、macOS)
 3. ✅ トレイポップアップ UI(トレイ横への位置合わせ、フォーカスアウトで閉じる、透明ウィンドウ+角丸カード化。**Windows 実機で目視確認済み 2026-08-04**: 位置合わせ・フォーカスアウト・トグル・透明表示 OK。**未検証**: macOS)
-4. ⬜ キーマップ表示画面(4 レイヤーの画像表示)
+4. ✅ キーマップ表示画面(4 レイヤーの画像表示。**Windows 実機で GitHub raw 取得+キャッシュ保存まで確認済み 2026-08-04**。**未検証**: ウィンドウ表示の目視、オフラインフォールバック、macOS)
+   - **v2 ライブ取得(ZMK Studio RPC)もアプリ側実装済み**(2026-08-04)。実機 E2E は**ファームの Studio 有効化待ち**(上記「注意」の 2 行を KobitoKey_left.conf に追記 → ビルド → 左手側に書き込み)。ファーム未対応時の画像フォールバックは Windows 実機で検証済み
 5. ⬜ 小人ドット絵アニメーション(残量連動。macOS はテンプレートアイコン化)
 6. ⬜ GitHub Actions で macOS / Windows ビルド → GitHub Releases 配布
 
@@ -89,11 +92,18 @@ ZMK ファームウェアの左右分割キーボード(4 行 × 10 列、PMW361
 
 ```
 kobito-bar/
-├── src/                  # フロントエンド(React + TS)。トレイポップアップ UI
+├── src/                  # フロントエンド(React + TS)
+│   ├── App.tsx           # ?view= によるウィンドウ別ビュー切替
+│   ├── PopupView.tsx     # トレイポップアップ(電池残量)
+│   └── KeymapView.tsx    # キーマップウィンドウ(4 レイヤーのタブ表示)
 ├── src-tauri/
 │   ├── src/lib.rs        # アプリ本体(Builder、ウィンドウ挙動、IPC コマンド)
-│   ├── src/tray.rs       # トレイアイコン・メニュー
+│   ├── src/tray.rs       # トレイアイコン・メニュー・ポップアップ位置合わせ
 │   ├── src/battery/      # BLE 層。mod.rs = 状態管理・配信、ble.rs = bluest 監視ループ
+│   ├── src/keymap.rs     # v1: キーマップ画像の取得・キャッシュ・配信
+│   ├── src/studio/       # v2: ZMK Studio RPC(BLE)による実機キーマップ取得
+│   ├── proto/            # zmk-studio-messages の proto 定義(vendored)
+│   ├── resources/keymaps/ # 同梱キーマップ画像(オフライン初回のフォールバック)
 │   ├── Info.plist        # macOS 用 Bluetooth 権限記述(ビルド時にマージされる)
 │   ├── capabilities/     # Tauri v2 ACL
 │   └── icons/            # `pnpm tauri icon` で app-icon.png から生成
@@ -126,6 +136,18 @@ kobito-bar/
   - hide 直後 400ms 以内のトレイクリックは「閉じる操作」として無視(`PopupState::hidden_at`)。Windows ではポップアップ表示中のトレイクリックが「フォーカスアウト → Click イベント」の順で届き、対策なしだとトグルで閉じられなくなる
   - ウィンドウは `transparent: true` + `shadow: false` + CSS 角丸カード(影も CSS)。macOS の webview 透明化には `macOSPrivateApi: true` と tauri の `macos-private-api` feature が必要 — App Store 配布は不可になるが配布は GitHub Releases なので問題ない
   - `visibleOnAllWorkspaces: true` で macOS の別 Space にいても現在の Space に表示される
+- **キーマップ表示(マイルストーン 4 実装済み)**: 別ウィンドウ `keymap`(`index.html?view=keymap`、920×580 リサイズ可)に 4 レイヤーをタブ表示。トレイメニューとポップアップ内ボタンの両方から開ける(WSLg にはトレイがないため後者が開発時の導線)
+  - 配信は stale-while-revalidate: `get_keymap_images` コマンドがキャッシュ(app_data_dir/keymaps)→ 同梱(Resource/keymaps)の順で即返し、裏で GitHub raw(`KobitoKey_QWERTY/main/images`)から取得 → キャッシュと差分があれば `keymap-updated` イベントで差し替え。セッション中 1 回成功したら再取得しない(`KeymapState`)
+  - 画像は data URL(base64)で IPC 渡し(4 枚計 ~530KB。asset protocol 不要)。PNG マジックバイト検証で captive portal 等の偽応答をキャッシュしない
+  - reqwest は rustls-tls(cargo-xwin クロスビルドで OpenSSL を避けるため必須)
+  - keymap ウィンドウは `visible: false` で起動時に作成され、Webview の事前ロードで初回取得も起動直後に走る。閉じても hide(CloseRequested ハンドラは全ウィンドウ共通)
+- **ライブキーマップ(v2、マイルストーン 4 拡張・アプリ側実装済み)**: `studio/` モジュール。実機から取得できたら KeymapView が画像の代わりに SVG 描画へ切り替える
+  - GATT: service `00000000-0196-6107-c967-c5cfb1c2482a`、RPC characteristic `00000001-…`(write + **indicate**。bluest の `notify()` は properties を見て indicate を自動選択する — 確認済み)
+  - フレーミングは SOF/ESC/EOF = 0xAB/0xAC/0xAD(zmk の msg_framing.c と対称実装。framing.rs にテストあり)
+  - proto は zmk-studio-messages @ `6cb4c28`(zmk **v0.3** の west.yml が参照する版)を `src-tauri/proto/` に vendored し、prost + protoc-bin-vendored でビルド時生成(システム protoc 不要)
+  - binding → ラベルは behavior メタデータのパラメータ型(HidUsage / LayerId / Constant / Range / Nil)で汎用解釈し、&kp/&mo/&lt/&mt/&bt を個別実装しない。2 パラメータは param1=hold / param2=tap。HID usage は keyboard/consumer page の主要どころ+LANG1/2(かな/英数)。Shift 単独修飾は US shifted 記号に変換
+  - `get_keymap` / `get_physical_layouts` / `get_behavior_details` は **SECURED**(locked だと UNLOCK_REQUIRED)。`get_lock_state` を先に呼んで locked なら分かりやすく報告する
+  - 常時接続はしない: キーマップウィンドウ表示時(と再読込ボタン)に 1 セッションだけ取得。battery 層と独立に、接続済みデバイスを Studio service UUID で列挙して探す — 見つからなければ「ファーム未対応」と判定して画像へフォールバック
 - ウィンドウを閉じても hide のみで常駐継続。終了はトレイメニュー「KobitoBar を終了」→ `app.exit(0)`。`RunEvent::ExitRequested` は `code.is_none()` のときだけ `prevent_exit()`
 - macOS では `ActivationPolicy::Accessory` で Dock 非表示
 - フロント ⇔ Rust の IPC 契約: `get_battery_status` コマンド+ `battery-updated` イベント(BLE 層が実値を配信。フロントは受信時刻を「HH:MM 更新」としてフッター表示)

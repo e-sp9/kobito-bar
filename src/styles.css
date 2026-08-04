@@ -130,3 +130,160 @@ body {
   text-align: center;
   color: #a08d79;
 }
+
+.keymap-link {
+  border: 1px solid rgba(243, 233, 215, 0.18);
+  border-radius: 8px;
+  background: transparent;
+  color: #cdbba6;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 7px 0;
+  cursor: pointer;
+}
+
+.keymap-link:hover {
+  background: rgba(243, 233, 215, 0.06);
+}
+
+/* ---- キーマップウィンドウ(?view=keymap)---- */
+
+.keymap {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* 配置図画像が白背景ベースのため UI も白系で揃える */
+  background: #ffffff;
+  color: #2e2620;
+}
+
+.keymap-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0;
+  border-bottom: 1px solid #e4ddd2;
+  background: #f6f1e8;
+}
+
+.keymap-tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #6f6152;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px 7px;
+  cursor: pointer;
+}
+
+.keymap-tabs button:hover {
+  color: #2e2620;
+}
+
+.keymap-tabs button.active {
+  background: #ffffff;
+  border-color: #e4ddd2;
+  color: #2e2620;
+  font-weight: 600;
+  /* 下ボーダーに 1px 重ねてタブと本文が繋がって見えるように */
+  margin-bottom: -1px;
+}
+
+.layer-no {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: #a08d79;
+  letter-spacing: 0.04em;
+}
+
+.keymap-canvas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px 16px;
+  overflow: auto;
+}
+
+.keymap-canvas img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.keymap-note {
+  padding: 6px 16px 10px;
+  font-size: 0.75rem;
+  color: #a08d79;
+  text-align: center;
+}
+
+.keymap-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #ffffff;
+  color: #6f6152;
+}
+
+/* ---- ライブキーマップ(実機から取得、SVG 描画)---- */
+
+.live-keymap {
+  width: 100%;
+  height: 100%;
+}
+
+/* 配色はキーマップ画像(白背景 + ダークキー + オレンジ文字)に合わせる */
+.live-key {
+  fill: #263238;
+}
+
+.live-key-tap {
+  fill: #ffb02e;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.live-key-hold {
+  fill: #b0bec5;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.keymap-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 16px 10px;
+  font-size: 0.75rem;
+  color: #6f6152;
+  border-top: 1px solid #eee7db;
+}
+
+.keymap-statusbar .live-badge {
+  color: #3d7a35;
+}
+
+.keymap-statusbar .reload {
+  border: 1px solid #d9d0c2;
+  border-radius: 6px;
+  background: transparent;
+  color: #6f6152;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.keymap-statusbar .reload:hover {
+  background: #f6f1e8;
+}

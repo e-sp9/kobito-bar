@@ -1,7 +1,7 @@
 //! 電池残量の状態管理。BLE 層(ble.rs)が取得した値をここで一元管理し、
 //! フロントエンド(`battery-updated` イベント)とトレイメニューへ配信する。
 
-mod ble;
+pub(crate) mod ble;
 
 use std::sync::Mutex;
 

@@ -19,8 +19,8 @@ use uuid::Uuid;
 
 use super::{interpret_raw_level, publish, BatteryStatus, Side};
 
-/// CONFIG_ZMK_KEYBOARD_NAME の値
-const KEYBOARD_NAME: &str = "KobitoKey";
+/// CONFIG_ZMK_KEYBOARD_NAME の値(studio 層のデバイス探索でも使う)
+pub const KEYBOARD_NAME: &str = "KobitoKey";
 const BATTERY_SERVICE_UUID: Uuid = Uuid::from_u128(0x0000180F_0000_1000_8000_00805F9B34FB);
 const BATTERY_LEVEL_UUID: Uuid = Uuid::from_u128(0x00002A19_0000_1000_8000_00805F9B34FB);
 

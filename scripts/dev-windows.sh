@@ -19,6 +19,10 @@ mkdir -p "$DEST"
 sleep 1
 
 cp src-tauri/target/x86_64-pc-windows-msvc/release/kobito-bar.exe "$DEST/"
+# 同梱リソース(キーマップ画像)。Windows の resource_dir は exe と同じディレクトリ
+if [ -d src-tauri/target/x86_64-pc-windows-msvc/release/keymaps ]; then
+  cp -r src-tauri/target/x86_64-pc-windows-msvc/release/keymaps "$DEST/"
+fi
 echo "起動: ${WINTMP}\\KobitoBar\\kobito-bar.exe"
 echo "ログ: ${WINTMP}\\KobitoBar\\kobito-bar.log"
 cd "$DEST"

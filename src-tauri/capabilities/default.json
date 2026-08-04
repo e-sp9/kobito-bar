@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "KobitoBar メインウィンドウ(トレイポップアップ)の既定権限",
-  "windows": ["main"],
+  "description": "KobitoBar 各ウィンドウ(トレイポップアップ、キーマップ)の既定権限",
+  "windows": ["main", "keymap"],
   "permissions": ["core:default"]
 }
