@@ -79,8 +79,8 @@ ZMK ファームウェアの左右分割キーボード(4 行 × 10 列、PMW361
 ## マイルストーン
 
 1. ✅ Tauri v2 雛形(トレイ常駐、自動起動設定)
-2. ✅ BLE 層: KobitoKey 検出 → Battery Service の 2 characteristic 読み取り+notify 購読 → CUD で左右識別 → 切断・再接続処理(**実機未検証** — WSL2 では型チェックのみ。macOS / Windows での動作確認が必要)
-3. ⬜ トレイポップアップ UI(左右残量表示。トレイ横への位置合わせ、フォーカスアウトで閉じる等の作り込みはここで)
+2. ✅ BLE 層: KobitoKey 検出 → Battery Service の 2 characteristic 読み取り+notify 購読 → CUD で左右識別 → 切断・再接続処理(**Windows 実機で検証済み 2026-08-04**: 検出・接続・CUD 左右識別・read 初期値(左 90%/右 91%)・notify 受信まで確認。notify は ZMK 仕様で残量が変化したときのみ届く。**未検証**: 切断→再接続(ディープスリープ復帰)、macOS)
+3. ✅ トレイポップアップ UI(トレイ横への位置合わせ、フォーカスアウトで閉じる、透明ウィンドウ+角丸カード化。**Windows 実機で目視確認済み 2026-08-04**: 位置合わせ・フォーカスアウト・トグル・透明表示 OK。**未検証**: macOS)
 4. ⬜ キーマップ表示画面(4 レイヤーの画像表示)
 5. ⬜ 小人ドット絵アニメーション(残量連動。macOS はテンプレートアイコン化)
 6. ⬜ GitHub Actions で macOS / Windows ビルド → GitHub Releases 配布
@@ -110,7 +110,7 @@ kobito-bar/
 - `cargo check`(`src-tauri/` 内)— Rust の型チェック
 - アイコン再生成: `node scripts/generate-icon.mjs && pnpm tauri icon`
 
-### 実装メモ(雛形時点の設計)
+### 実装メモ
 
 - トレイ左クリック = ポップアップ(`main` ウィンドウ)のトグル、右クリック = メニュー
 - メニューの「左手/右手: --%」項目は `tray::TrayHandles`(managed state)経由で BLE 層が更新する
@@ -119,9 +119,16 @@ kobito-bar/
   - 生値 0 は「不明」(None)扱い(右手が左手と未接続の間、ZMK プロキシは 0 を報告する)
   - 接続直後に read で初期値取得(ZMK の notify はデフォルト 60 秒間隔のため)、以後は notify
   - 切断検出は `device_connection_events` + notify ストリーム終了の両方。検出後は状態を落とし 2 秒後に接続済み一覧のポーリング(5 秒間隔)へ戻る = ディープスリープ復帰も自動で拾う
+- **ポップアップ UI(マイルストーン 3 実装済み)**:
+  - 位置合わせ: トレイイベント(Click/Enter/Move/Leave)の rect を `tray::PopupState`(managed state)に記録し、表示時に `popup_position()`(純関数・テスト付き)で計算。トレイアイコン中央にウィンドウ中央を合わせてモニタ作業領域内にクランプ、トレイが作業領域中心より上なら下に(macOS メニューバー)、下なら上に(Windows タスクバー)出す
+  - 座標系: トレイ rect は全 OS で物理 px・上原点(tray-icon が backend で変換済み)。モニタ特定は position/size による自前の内包判定 — tauri の `monitor_from_point` は macOS が論理座標・Windows が物理座標で OS 差があるため使わない
+  - フォーカスアウトで hide は **release ビルドのみ**(`#[cfg(not(debug_assertions))]`)— WSLg にはトレイがなく一度隠れると再表示できないため。実機確認は release でビルドする `scripts/dev-windows.sh` で可能
+  - hide 直後 400ms 以内のトレイクリックは「閉じる操作」として無視(`PopupState::hidden_at`)。Windows ではポップアップ表示中のトレイクリックが「フォーカスアウト → Click イベント」の順で届き、対策なしだとトグルで閉じられなくなる
+  - ウィンドウは `transparent: true` + `shadow: false` + CSS 角丸カード(影も CSS)。macOS の webview 透明化には `macOSPrivateApi: true` と tauri の `macos-private-api` feature が必要 — App Store 配布は不可になるが配布は GitHub Releases なので問題ない
+  - `visibleOnAllWorkspaces: true` で macOS の別 Space にいても現在の Space に表示される
 - ウィンドウを閉じても hide のみで常駐継続。終了はトレイメニュー「KobitoBar を終了」→ `app.exit(0)`。`RunEvent::ExitRequested` は `code.is_none()` のときだけ `prevent_exit()`
 - macOS では `ActivationPolicy::Accessory` で Dock 非表示
-- フロント ⇔ Rust の IPC 契約: `get_battery_status` コマンド+ `battery-updated` イベント(現状はダミー実装)
+- フロント ⇔ Rust の IPC 契約: `get_battery_status` コマンド+ `battery-updated` イベント(BLE 層が実値を配信。フロントは受信時刻を「HH:MM 更新」としてフッター表示)
 - 現在のアイコンは `scripts/generate-icon.mjs` によるプレースホルダの小人ドット絵。マイルストーン 5 で本番アートに差し替える
 
 ## 開発環境の注意(このマシン = WSL2)

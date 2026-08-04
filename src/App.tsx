@@ -26,17 +26,26 @@ function BatteryRow({ label, level }: { label: string; level: number | null }) {
   );
 }
 
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function App() {
   const [status, setStatus] = useState<BatteryStatus>({
     connected: false,
     left: null,
     right: null,
   });
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
-    invoke<BatteryStatus>("get_battery_status").then(setStatus).catch(console.error);
+    const apply = (next: BatteryStatus) => {
+      setStatus(next);
+      if (next.connected) setUpdatedAt(new Date());
+    };
+    invoke<BatteryStatus>("get_battery_status").then(apply).catch(console.error);
     const unlisten = listen<BatteryStatus>("battery-updated", (event) => {
-      setStatus(event.payload);
+      apply(event.payload);
     });
     return () => {
       unlisten.then((fn) => fn());
@@ -59,6 +68,11 @@ export default function App() {
         <BatteryRow label="左手" level={status.left} />
         <BatteryRow label="右手" level={status.right} />
       </div>
+      <footer className="popup-footer">
+        {status.connected
+          ? updatedAt && `${formatTime(updatedAt)} 更新`
+          : "KobitoKey を探しています…"}
+      </footer>
     </main>
   );
 }

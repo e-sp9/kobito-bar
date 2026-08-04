@@ -20,5 +20,8 @@ sleep 1
 
 cp src-tauri/target/x86_64-pc-windows-msvc/release/kobito-bar.exe "$DEST/"
 echo "起動: ${WINTMP}\\KobitoBar\\kobito-bar.exe"
+echo "ログ: ${WINTMP}\\KobitoBar\\kobito-bar.log"
 cd "$DEST"
-nohup ./kobito-bar.exe >/dev/null 2>&1 &
+# GUI サブシステムでも WSL interop 経由なら eprintln が標準ハンドルに届くため、
+# BLE 層のログ([ble] ...)をファイルに残す
+nohup ./kobito-bar.exe >kobito-bar.log 2>&1 &

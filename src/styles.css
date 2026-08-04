@@ -14,16 +14,23 @@ body {
   user-select: none;
   cursor: default;
   overflow: hidden;
+  /* ウィンドウは transparent。角丸カード(.popup)の外側を透過させる */
+  background: transparent;
 }
 
 .popup {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 100vh;
+  height: calc(100vh - 24px);
+  margin: 12px;
   padding: 16px;
   background: #2e2620;
   color: #f3e9d7;
+  border: 1px solid rgba(243, 233, 215, 0.08);
+  border-radius: 14px;
+  /* OS のウィンドウ影は切ってある(shadow: false)ため CSS で影を描く */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .popup-header {
@@ -114,4 +121,12 @@ body {
 
 .battery-fill[data-state="unknown"] {
   background: transparent;
+}
+
+.popup-footer {
+  margin-top: auto;
+  min-height: 1em;
+  font-size: 0.72rem;
+  text-align: center;
+  color: #a08d79;
 }

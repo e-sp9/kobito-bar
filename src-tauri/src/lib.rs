@@ -34,10 +34,28 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // ウィンドウを閉じてもアプリは終了せず隠すだけ(トレイ常駐を継続)
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+            match event {
+                // ウィンドウを閉じてもアプリは終了せず隠すだけ(トレイ常駐を継続)
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+                // ポップアップはフォーカスが外れたら隠す(トレイポップアップの流儀)。
+                // debug ビルドでは無効: WSLg にはトレイがなく、一度隠れると
+                // 再表示する手段がないため(実機確認は release の dev-windows.sh で)
+                #[cfg(not(debug_assertions))]
+                tauri::WindowEvent::Focused(false) if window.label() == "main" => {
+                    use tauri::Manager;
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                        // 直後に届くトレイクリックで再表示しないよう記録する
+                        window
+                            .app_handle()
+                            .state::<tray::PopupState>()
+                            .mark_hidden_by_focus_out();
+                    }
+                }
+                _ => {}
             }
         })
         .build(tauri::generate_context!())
