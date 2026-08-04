@@ -1,7 +1,24 @@
+/* KobitoBar Windows.dc.html(claude.ai/design)のデザイントークン。
+   ターミナル風ダーク + hud green アクセント(Even G2 の緑モノクロ HUD 参照) */
 :root {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Segoe UI", system-ui,
-    sans-serif;
-  font-size: 14px;
+  --kb-fg: #e7ecf2;
+  --kb-fg-key: #d9e0e8;
+  --kb-fg-dim: #98a2ad;
+  --kb-fg-faint: #5b6570;
+  --kb-line: rgba(255, 255, 255, 0.09);
+  --kb-line-strong: rgba(255, 255, 255, 0.18);
+  --kb-accent: #5be18b;
+  --kb-accent-dim: rgba(91, 225, 139, 0.6);
+  --kb-accent-tint: rgba(91, 225, 139, 0.12);
+  --kb-grid-dot: rgba(91, 225, 139, 0.07);
+  --kb-num-glow: 0 0 14px rgba(91, 225, 139, 0.3);
+  --kb-warn: #efab54;
+  --kb-warn-dim: rgba(239, 171, 84, 0.55);
+  --kb-warn-tint: rgba(239, 171, 84, 0.12);
+  /* Cascadia Mono は Windows 11 同梱。closest fallback = JetBrains Mono
+     (未導入環境では ui-monospace / Consolas へ) */
+  font-family: "Cascadia Mono", "JetBrains Mono", ui-monospace, "SF Mono",
+    Consolas, monospace;
 }
 
 * {
@@ -14,276 +31,459 @@ body {
   user-select: none;
   cursor: default;
   overflow: hidden;
-  /* ウィンドウは transparent。角丸カード(.popup)の外側を透過させる */
+  /* ウィンドウは transparent。カードの外側を透過させる */
   background: transparent;
 }
 
-.popup {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  height: calc(100vh - 24px);
-  margin: 12px;
-  padding: 16px;
-  background: #2e2620;
-  color: #f3e9d7;
-  border: 1px solid rgba(243, 233, 215, 0.08);
-  border-radius: 14px;
-  /* OS のウィンドウ影は切ってある(shadow: false)ため CSS で影を描く */
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+@keyframes kbfade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.popup-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+@keyframes kbpulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
-.popup-header h1 {
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
-}
-
-.connection {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.connection.online {
-  background: #2f4a2d;
-  color: #a9d9a2;
-}
-
-.connection.offline {
-  background: #4a3a33;
-  color: #c7b3a5;
-}
-
-.kobito-stage {
+/* Windows はタスクバーから上向きに開くためカードを下端へ寄せる。
+   余白は CSS 影の描画スペース(OS 影は shadow: false で切ってある) */
+.popup-frame {
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 18px 0;
-  border-radius: 10px;
-  background: #241d18;
-  color: #a08d79;
-  font-size: 0.8rem;
+  justify-content: flex-end;
+  padding: 18px 24px 14px;
 }
 
-.kobito-placeholder {
-  font-size: 2rem;
+.popup-frame.anchor-top {
+  justify-content: flex-start;
 }
 
-.battery-list {
+.card {
+  position: relative;
+  width: 406px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #16181d;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.6);
+  padding: 14px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  color: var(--kb-fg);
+  line-height: 1.2;
 }
 
-.battery-row {
-  display: grid;
-  grid-template-columns: 2.6em 1fr 3.2em;
+/* 四隅の HUD ブラケット */
+.corner {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.corner.tl {
+  top: 7px;
+  left: 7px;
+  border-top: 1px solid var(--kb-accent-dim);
+  border-left: 1px solid var(--kb-accent-dim);
+}
+
+.corner.tr {
+  top: 7px;
+  right: 7px;
+  border-top: 1px solid var(--kb-accent-dim);
+  border-right: 1px solid var(--kb-accent-dim);
+}
+
+.corner.bl {
+  bottom: 7px;
+  left: 7px;
+  border-bottom: 1px solid var(--kb-accent-dim);
+  border-left: 1px solid var(--kb-accent-dim);
+}
+
+.corner.br {
+  bottom: 7px;
+  right: 7px;
+  border-bottom: 1px solid var(--kb-accent-dim);
+  border-right: 1px solid var(--kb-accent-dim);
+}
+
+.term-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--kb-fg-faint);
+}
+
+.term-meta {
+  opacity: 0.8;
+}
+
+/* セクション見出し(ラベル + 罫線 + ダイヤ) */
+.sect {
+  display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 10px;
+  color: var(--kb-fg-faint);
 }
 
-.battery-label {
-  color: #cdbba6;
+.sect-keymap {
+  margin-top: 11px;
 }
 
-.battery-value {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.sect-battery {
+  margin-top: 13px;
 }
 
-.battery-gauge {
-  height: 10px;
-  border-radius: 999px;
-  background: #1d1712;
-  overflow: hidden;
-}
-
-.battery-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.4s ease;
-}
-
-.battery-fill[data-state="ok"] {
-  background: #7fb069;
-}
-
-.battery-fill[data-state="low"] {
-  background: #d64943;
-}
-
-.battery-fill[data-state="unknown"] {
-  background: transparent;
-}
-
-.popup-footer {
-  margin-top: auto;
-  min-height: 1em;
-  font-size: 0.72rem;
-  text-align: center;
-  color: #a08d79;
-}
-
-.keymap-link {
-  border: 1px solid rgba(243, 233, 215, 0.18);
-  border-radius: 8px;
-  background: transparent;
-  color: #cdbba6;
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 7px 0;
-  cursor: pointer;
-}
-
-.keymap-link:hover {
-  background: rgba(243, 233, 215, 0.06);
-}
-
-/* ---- キーマップウィンドウ(?view=keymap)---- */
-
-.keymap {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  /* 配置図画像が白背景ベースのため UI も白系で揃える */
-  background: #ffffff;
-  color: #2e2620;
-}
-
-.keymap-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 10px 14px 0;
-  border-bottom: 1px solid #e4ddd2;
-  background: #f6f1e8;
-}
-
-.keymap-tabs button {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
-  background: transparent;
-  color: #6f6152;
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 6px 14px 7px;
-  cursor: pointer;
-}
-
-.keymap-tabs button:hover {
-  color: #2e2620;
-}
-
-.keymap-tabs button.active {
-  background: #ffffff;
-  border-color: #e4ddd2;
-  color: #2e2620;
-  font-weight: 600;
-  /* 下ボーダーに 1px 重ねてタブと本文が繋がって見えるように */
-  margin-bottom: -1px;
-}
-
-.layer-no {
-  font-size: 0.68rem;
-  font-weight: 400;
-  color: #a08d79;
-  letter-spacing: 0.04em;
-}
-
-.keymap-canvas {
+.sect .rule {
   flex: 1;
-  min-height: 0;
+  height: 1px;
+  background: var(--kb-line);
+}
+
+.sect .diamond {
+  width: 3px;
+  height: 3px;
+  background: var(--kb-accent-dim);
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+
+/* キーマップフォールバックの理由 1 行 */
+.fb-note {
+  margin-top: 9px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--kb-warn);
+}
+
+.fb-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--kb-warn-dim);
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px 16px;
-  overflow: auto;
+  background: var(--kb-warn-tint);
 }
 
-.keymap-canvas img {
+/* レイヤータブ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 9px;
+}
+
+.tabs button {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--kb-fg-dim);
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.tabs button:hover {
+  color: var(--kb-fg);
+}
+
+.tabs button.active {
+  background: var(--kb-accent-tint);
+  color: var(--kb-accent);
+}
+
+/* キーマップ表示エリア(live / scan / static 共通の枠) */
+.map {
+  height: 142px;
+  margin-top: 9px;
+}
+
+.map-live {
+  position: relative;
+  animation: kbfade 0.18s ease-out;
+  background-image: radial-gradient(var(--kb-grid-dot) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.mini-keymap {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mini-key {
+  fill: rgba(255, 255, 255, 0.045);
+  stroke: rgba(255, 255, 255, 0.11);
+  stroke-width: 0.035;
+}
+
+.mini-key.blank {
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+.mini-key.active {
+  fill: var(--kb-accent-tint);
+  stroke: var(--kb-accent-dim);
+  filter: drop-shadow(0 0 3px var(--kb-accent-tint));
+}
+
+.mini-tap {
+  fill: var(--kb-fg-key);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.mini-tap.blank {
+  fill: var(--kb-fg-faint);
+}
+
+.mini-tap.active {
+  fill: var(--kb-fg);
+}
+
+.mini-hold {
+  fill: var(--kb-fg-faint);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.mini-hold.active {
+  fill: var(--kb-accent);
+}
+
+/* 完全未接続: 探索中 placeholder */
+.map-scan {
+  border: 1px dashed rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  background-image: radial-gradient(var(--kb-grid-dot) 1px, transparent 1px);
+  background-size: 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.scan-dot {
+  font-size: 15px;
+  color: var(--kb-accent);
+  animation: kbpulse 1.6s ease-in-out infinite;
+}
+
+.scan-msg {
+  font-size: 11px;
+  color: var(--kb-fg-dim);
+}
+
+.scan-hint {
+  font-size: 9.5px;
+  color: var(--kb-fg-faint);
+}
+
+/* 静的画像フォールバック */
+.map-static {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.028) 0 8px,
+    transparent 8px 16px
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  animation: kbfade 0.18s ease-out;
+}
+
+.map-static img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
 
-.keymap-note {
-  padding: 6px 16px 10px;
-  font-size: 0.75rem;
-  color: #a08d79;
-  text-align: center;
+.static-name {
+  font-size: 10.5px;
+  color: var(--kb-fg-dim);
 }
 
-.keymap-status {
+.static-cap {
+  font-size: 9px;
+  color: var(--kb-fg-faint);
+}
+
+/* 電池: L / R の 2 カラム */
+.sides {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background: #ffffff;
-  color: #6f6152;
+  margin-top: 10px;
 }
 
-/* ---- ライブキーマップ(実機から取得、SVG 描画)---- */
-
-.live-keymap {
-  width: 100%;
-  height: 100%;
-}
-
-/* 配色はキーマップ画像(白背景 + ダークキー + オレンジ文字)に合わせる */
-.live-key {
-  fill: #263238;
-}
-
-.live-key-tap {
-  fill: #ffb02e;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-.live-key-hold {
-  fill: #b0bec5;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-.keymap-statusbar {
+.side {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 10px;
-  padding: 7px 16px 10px;
-  font-size: 0.75rem;
-  color: #6f6152;
-  border-top: 1px solid #eee7db;
 }
 
-.keymap-statusbar .live-badge {
-  color: #3d7a35;
+.side:first-child {
+  padding-right: 16px;
 }
 
-.keymap-statusbar .reload {
-  border: 1px solid #d9d0c2;
-  border-radius: 6px;
-  background: transparent;
-  color: #6f6152;
-  font: inherit;
-  font-size: 0.72rem;
-  padding: 2px 10px;
-  cursor: pointer;
+.side:last-child {
+  padding-left: 16px;
+  border-left: 1px solid var(--kb-line);
 }
 
-.keymap-statusbar .reload:hover {
-  background: #f6f1e8;
+.side-id {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.side-letter {
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--kb-line-strong);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  color: var(--kb-fg-dim);
+}
+
+.side-chip {
+  height: 17px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--kb-line-strong);
+  border-radius: 4px;
+  font-size: 9px;
+  color: var(--kb-fg-dim);
+  white-space: nowrap;
+}
+
+.side-chip.warn {
+  border-color: var(--kb-warn-dim);
+  color: var(--kb-warn);
+}
+
+.side-num {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.side-num .num {
+  font-size: 37px;
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  line-height: 0.9;
+  color: var(--kb-fg);
+  text-shadow: var(--kb-num-glow);
+}
+
+.side-num[data-state="low"] .num {
+  color: var(--kb-warn);
+  text-shadow: 0 0 14px rgba(239, 171, 84, 0.35);
+}
+
+.side-num[data-state="unknown"] .num {
+  color: var(--kb-fg-faint);
+  text-shadow: none;
+}
+
+.side-num .pct {
+  font-size: 13px;
+  color: var(--kb-fg-faint);
+}
+
+/* 10 ブロックゲージ */
+.side-gauge {
+  display: flex;
+  gap: 3px;
+  max-width: 152px;
+}
+
+.seg {
+  flex: 1;
+  height: 6px;
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background 0.25s;
+}
+
+.seg.on {
+  background: var(--kb-accent);
+  box-shadow: 0 0 6px var(--kb-accent-tint);
+}
+
+.seg.on.warn {
+  background: var(--kb-warn);
+  box-shadow: 0 0 6px rgba(239, 171, 84, 0.35);
+}
+
+/* ステータスフッター */
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--kb-line);
+  font-size: 10px;
+  color: var(--kb-fg-dim);
+}
+
+.foot-status {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.foot .dot {
+  text-shadow: 0 0 8px currentColor;
+}
+
+.foot .dot.on {
+  color: var(--kb-accent);
+}
+
+.foot .dot.half {
+  color: var(--kb-fg-dim);
+}
+
+.foot .dot.off {
+  color: var(--kb-fg-faint);
+}
+
+.foot-dim {
+  color: var(--kb-fg-faint);
 }

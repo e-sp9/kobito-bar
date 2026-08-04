@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Monitor, PhysicalPosition, Position, Rect, Runtime, Size, WebviewWindow,
 };
 use tauri_plugin_autostart::ManagerExt;
@@ -16,9 +16,10 @@ const FOCUS_OUT_TOGGLE_GRACE: Duration = Duration::from_millis(400);
 /// トレイアイコンとポップアップの間隔(論理 px)
 const POPUP_GAP: f64 = 8.0;
 
-/// 電池残量表示メニュー項目のハンドル。BLE 層(マイルストーン2)が
-/// managed state からこれを取り出してトレイメニューの表示を更新する。
+/// トレイ関連のハンドル。BLE 層(マイルストーン2)が managed state から
+/// これを取り出してメニューの残量表示とホバー時ツールチップを更新する。
 pub struct TrayHandles<R: Runtime> {
+    pub tray: TrayIcon<R>,
     pub battery_left: MenuItem<R>,
     pub battery_right: MenuItem<R>,
 }
@@ -61,7 +62,6 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     let battery_left = MenuItem::with_id(app, "battery-left", "左手: --%", false, None::<&str>)?;
     let battery_right = MenuItem::with_id(app, "battery-right", "右手: --%", false, None::<&str>)?;
-    let keymap = MenuItem::with_id(app, "keymap", "キーマップを表示", true, None::<&str>)?;
     let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
     let autostart = CheckMenuItem::with_id(
         app,
@@ -79,7 +79,6 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             &battery_left,
             &battery_right,
             &PredefinedMenuItem::separator(app)?,
-            &keymap,
             &autostart,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -88,12 +87,12 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     let autostart_item = autostart.clone();
     let mut builder = TrayIconBuilder::with_id("kobito-tray")
-        .tooltip("KobitoBar")
+        // BLE 層が接続後に「kobitobar — L 82% / R 76%」形式へ更新する
+        .tooltip("kobitobar — scanning")
         .menu(&menu)
         // 左クリックはポップアップのトグルに使う(メニューは右クリック)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
-            "keymap" => crate::keymap::show(app),
             "autostart" => {
                 let autolaunch = app.autolaunch();
                 let result = if autolaunch.is_enabled().unwrap_or(false) {
@@ -142,9 +141,10 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         builder = builder.icon(icon.clone());
     }
 
-    builder.build(app)?;
+    let tray = builder.build(app)?;
 
     app.manage(TrayHandles {
+        tray,
         battery_left,
         battery_right,
     });

@@ -17,7 +17,7 @@ use std::time::Duration;
 use base64::Engine;
 use serde::Serialize;
 use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// レイヤーの表示名。KobitoKey.keymap の label と対応
 /// (Layer 0 はラベルなしのデフォルトレイヤーなので QWERTY と表記)
@@ -57,21 +57,6 @@ pub async fn get_keymap_images(app: AppHandle) -> Result<Vec<KeymapImage>, Strin
     let images = load_local(&app)?;
     spawn_refresh_if_needed(&app);
     Ok(images)
-}
-
-/// キーマップウィンドウを表示する(ポップアップ内のボタンから)
-#[tauri::command]
-pub fn show_keymap_window(app: AppHandle) {
-    show(&app);
-}
-
-/// トレイメニューとコマンドの両方から使う表示処理
-pub fn show<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(window) = app.get_webview_window("keymap") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
-    }
 }
 
 /// キャッシュ → 同梱の順に読んで全レイヤーを組み立てる

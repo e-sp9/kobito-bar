@@ -17,7 +17,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_battery_status,
             keymap::get_keymap_images,
-            keymap::show_keymap_window,
             studio::get_live_keymap
         ])
         .setup(|app| {

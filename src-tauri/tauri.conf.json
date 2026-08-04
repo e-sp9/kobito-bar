@@ -15,8 +15,8 @@
       {
         "label": "main",
         "title": "KobitoBar",
-        "width": 324,
-        "height": 384,
+        "width": 454,
+        "height": 448,
         "resizable": false,
         "visible": false,
         "decorations": false,
@@ -25,18 +25,6 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visibleOnAllWorkspaces": true
-      },
-      {
-        "label": "keymap",
-        "title": "KobitoKey キーマップ",
-        "url": "index.html?view=keymap",
-        "width": 920,
-        "height": 580,
-        "minWidth": 640,
-        "minHeight": 420,
-        "resizable": true,
-        "visible": false,
-        "center": true
       }
     ],
     "security": {

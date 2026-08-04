@@ -70,7 +70,24 @@ fn publish(app: &AppHandle, mutate: impl FnOnce(&mut BatteryStatus)) {
         let _ = tray
             .battery_right
             .set_text(format_level_label("右手", status.right));
+        // タスクバーに常時テキストは出せないため、残量はホバー時ツールチップで補う
+        let _ = tray.tray.set_tooltip(Some(tooltip_text(&status)));
     }
+}
+
+fn tooltip_text(status: &BatteryStatus) -> String {
+    if !status.connected {
+        return "kobitobar — scanning".to_string();
+    }
+    let fmt = |level: Option<u8>| match level {
+        Some(v) => format!("{v}%"),
+        None => "--".to_string(),
+    };
+    format!(
+        "kobitobar — L {} / R {}",
+        fmt(status.left),
+        fmt(status.right)
+    )
 }
 
 fn format_level_label(side: &str, level: Option<u8>) -> String {
@@ -115,6 +132,29 @@ mod tests {
     fn format_label_with_and_without_level() {
         assert_eq!(format_level_label("左手", Some(85)), "左手: 85%");
         assert_eq!(format_level_label("右手", None), "右手: --%");
+    }
+
+    #[test]
+    fn tooltip_shows_levels_when_connected() {
+        let status = BatteryStatus {
+            connected: true,
+            left: Some(82),
+            right: Some(76),
+        };
+        assert_eq!(tooltip_text(&status), "kobitobar — L 82% / R 76%");
+
+        let unknown_right = BatteryStatus {
+            connected: true,
+            left: Some(82),
+            right: None,
+        };
+        assert_eq!(tooltip_text(&unknown_right), "kobitobar — L 82% / R --");
+    }
+
+    #[test]
+    fn tooltip_shows_scanning_when_disconnected() {
+        let status = BatteryStatus::default();
+        assert_eq!(tooltip_text(&status), "kobitobar — scanning");
     }
 
     #[test]
