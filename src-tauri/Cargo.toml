@@ -20,5 +20,12 @@ tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# btleplug(マイルストーン2)は mac/win 限定のターゲット依存として追加する予定:
-# [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+# BLE 層(マイルストーン2)。btleplug ではなく bluest を採用:
+# 接続済みデバイス列挙(connected_devices_with_services)・CUD descriptor 読み取り・
+# 切断イベント検出をクロスプラットフォームで提供し、OS API 直叩きが不要になる
+# (参考実装 zmk-battery-center と同じ構成)。Linux backend(BlueZ)もあるため
+# 無条件依存にでき、WSL2 でも cargo check が通る
+bluest = "0.6"
+futures-util = "0.3"
+uuid = "1"
+tokio = { version = "1", features = ["time", "macros"] }

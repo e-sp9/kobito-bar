@@ -1,27 +1,9 @@
+pub mod battery;
 pub mod tray;
 
-use serde::Serialize;
-
-/// フロントエンドとの IPC 契約。`get_battery_status` コマンドの戻り値であり、
-/// `battery-updated` イベントのペイロードでもある。
-#[derive(Debug, Clone, Serialize)]
-pub struct BatteryStatus {
-    /// KobitoKey(左手側 = central)と BLE 接続できているか
-    pub connected: bool,
-    /// 左手側の電池残量(0-100)。未取得なら None
-    pub left: Option<u8>,
-    /// 右手側の電池残量(0-100)。右手側が左手側と未接続の間は None
-    pub right: Option<u8>,
-}
-
-/// BLE 層(マイルストーン2)が実装されるまではダミー値を返す。
 #[tauri::command]
-fn get_battery_status() -> BatteryStatus {
-    BatteryStatus {
-        connected: false,
-        left: None,
-        right: None,
-    }
+fn get_battery_status(state: tauri::State<'_, battery::BatteryState>) -> battery::BatteryStatus {
+    state.snapshot()
 }
 
 pub fn run() {
@@ -37,6 +19,18 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             tray::setup(app.handle())?;
+            // トレイメニュー項目(TrayHandles)を manage した後に起動する
+            battery::spawn(app.handle());
+
+            // 開発ビルドでは起動時からポップアップを表示する。トレイが表示されない
+            // 環境(WSLg にはトレイ表示ホストがない)でも動作確認できるように
+            #[cfg(debug_assertions)]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
